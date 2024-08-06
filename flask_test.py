@@ -3,6 +3,8 @@ from flask import Flask, request, jsonify
 from marshmallow import Schema, fields, ValidationError
 import google.generativeai as genai
 import os
+from google.oauth2 import service_account
+from google.auth.transport.requests import Request
 
 # Load environment variables
 load_dotenv()
