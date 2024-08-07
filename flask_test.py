@@ -23,10 +23,14 @@ generation_config = {
 }
 
 # Initialize the generative model
+"""
 model = genai.GenerativeModel(
     model_name="tunedModels/brightspend-ai-training-ilpn6zzcubfi",
     generation_config=generation_config,
 )
+"""
+
+model = genai.GenerativeModel('gemini-pro')
 
 # Define the request schema using Marshmallow
 class GenerationRequestSchema(Schema):
