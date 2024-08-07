@@ -1,10 +1,11 @@
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
-from marshmallow import Schema, fields, ValidationError
 import google.generativeai as genai
-import os
 from google.oauth2 import service_account
 from google.auth.transport.requests import Request
+from load_creds import load_creds
+import os
+from marshmallow import Schema, fields, ValidationError
 
 # Load environment variables
 load_dotenv()
@@ -14,6 +15,11 @@ API_KEY = os.getenv('GEMINI_API_KEY')
 # Configure the API key for Google Generative AI
 genai.configure(api_key=API_KEY)
 
+creds = load_creds()
+
+# Configure Generative AI with credentials
+genai.configure(credentials=creds)
+
 # Define the generation configuration
 generation_config = {
     "temperature": 0.9,
@@ -22,40 +28,44 @@ generation_config = {
     # Remove response_mime_type if it's not a supported field
 }
 
-# Initialize the generative model
-"""
-model = genai.GenerativeModel(
-    model_name="tunedModels/brightspend-ai-training-ilpn6zzcubfi",
-    generation_config=generation_config,
-)
-"""
+# Get the tuned model
+tuned_model_name = "tunedModels/brightspend-ai-training-ilpn6zzcubfi"
+model = genai.get_tuned_model(tuned_model_name)
 
+"""
+# Using gemini_pro as an example
 model = genai.GenerativeModel('gemini-pro')
-
-# Define the request schema using Marshmallow
-class GenerationRequestSchema(Schema):
-    input_text = fields.Str(required=True)
+"""
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Endpoint for generating content
-@app.route('/generate/', methods=['POST'])
-def generate_content():
-    schema = GenerationRequestSchema()
+@app.route('/list_models', methods=['GET'])
+def list_models():
     try:
-        # Validate and deserialize input data
-        data = schema.load(request.json)
-    except ValidationError as err:
-        return jsonify(err.messages), 400
-
-    input_text = data['input_text']
-    try:
-        # Generate content using the input text
-        response = model.generate_content([f"input: {input_text}", "output: "])
-        return jsonify({"output": response.text})
+        models = genai.list_models()
+        model_names = [model.name for model in models]
+        return jsonify({"models": model_names})
     except Exception as e:
-        return jsonify({"detail": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
+
+# Endpoint for generating content
+@app.route('/generate', methods=['POST'])
+def generate():
+    data = request.json
+    question = data.get("input", "")
+
+    # Send the user's question along with the instruction to the chat model
+    response = genai.generate_text(
+        model=tuned_model_name,
+        prompt=f"input: {question}\noutput: ",
+        **generation_config
+    )
+
+    if not response:
+        return jsonify({"error": "Input text is required"}), 400
+
+    return jsonify({"response": response.text})
 
 # Simple root endpoint
 @app.route('/')
