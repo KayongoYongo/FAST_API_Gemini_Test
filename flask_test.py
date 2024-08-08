@@ -20,22 +20,15 @@ creds = load_creds()
 # Configure Generative AI with credentials
 genai.configure(credentials=creds)
 
-# Define the generation configuration
-generation_config = {
-    "temperature": 0.9,
-    "top_p": 1,
-    "max_output_tokens": 8192,
-    # Remove response_mime_type if it's not a supported field
-}
-
 # Get the tuned model
-tuned_model_name = "tunedModels/brightspend-ai-training-ilpn6zzcubfi"
-model = genai.get_tuned_model(tuned_model_name)
+tuned_model_name = "tunedModels/brightspend-ai-training-11mks2kex5wq"
+tuned_model = genai.get_tuned_model(tuned_model_name)
 
-"""
-# Using gemini_pro as an example
-model = genai.GenerativeModel('gemini-pro')
-"""
+# Print the details of the tuned model
+print(f"Tuned Model Name: {tuned_model.name}")
+
+# set the tuned model
+model = genai.GenerativeModel(model_name=tuned_model.name)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -53,19 +46,16 @@ def list_models():
 @app.route('/generate', methods=['POST'])
 def generate():
     data = request.json
-    question = data.get("input", "")
+    input_text = data.get("input", "")
 
-    # Send the user's question along with the instruction to the chat model
-    response = genai.generate_text(
-        model=tuned_model_name,
-        prompt=f"input: {question}\noutput: ",
-        **generation_config
-    )
-
-    if not response:
+    if not input_text:
         return jsonify({"error": "Input text is required"}), 400
 
-    return jsonify({"response": response.text})
+    try:
+        response = model.generate_content(input_text)
+        return jsonify({"response": response.text}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Simple root endpoint
 @app.route('/')
